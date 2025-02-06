@@ -21,7 +21,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Fonction pour afficher les messages
     function showMessage(message, isError = false) {
-        messageDiv.style.backgroundColor = isError ? '#ff4444' : '#4CAF50';
+        messageDiv.style.backgroundColor = isError ? '#ff4444' : '#0f33ff';
         messageDiv.style.color = 'white';
         messageDiv.textContent = message;
         messageDiv.style.display = 'block';
@@ -76,7 +76,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 width: 50px;
                 height: 50px;
                 border: 5px solid #f3f3f3;
-                border-top: 5px solid #4CAF50;
+                border-top: 5px solid #0f33ff;
                 border-radius: 50%;
                 margin: 0 auto 20px auto;
                 animation: spin 1s linear infinite;
@@ -93,12 +93,6 @@ document.addEventListener("DOMContentLoaded", function () {
     document.head.insertAdjacentHTML('beforeend', spinnerCSS);
     document.body.appendChild(loader);
 
-    // Fonction pour valider l'email
-    function isValidEmail(email) {
-        const re = /^(([^<>()$$$$\\.,;:\s@"]+(\.[^<>()$$$$\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-        return re.test(String(email).toLowerCase());
-    }
-
     form.addEventListener("submit", async function (event) {
         event.preventDefault();
 
@@ -111,13 +105,11 @@ document.addEventListener("DOMContentLoaded", function () {
         // Validation
         if (!name.trim()) {
             showMessage('Please enter your name', true);
-            document.getElementById("name").focus();
             return;
         }
 
-        if (!email.trim() || !isValidEmail(email)) {
+        if (!email.trim() || !email.includes('@')) {
             showMessage('Please enter a valid email address', true);
-            document.getElementById("email").focus();
             return;
         }
 
@@ -137,6 +129,7 @@ document.addEventListener("DOMContentLoaded", function () {
         };
 
         try {
+            console.log("Sending request...");
             const response = await fetch("/send-email", {
                 method: "POST",
                 headers: {
@@ -144,49 +137,22 @@ document.addEventListener("DOMContentLoaded", function () {
                 },
                 body: JSON.stringify(formData)
             });
+            
+            console.log("Response status:", response.status);
             const data = await response.json();
+            console.log("Response data:", data);
 
             if (response.ok) {
                 showMessage("Thank you! Check your email for recommendations!");
                 form.reset();
-                
-                // Décocher toutes les cases
-                document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-                    checkbox.checked = false;
-                });
             } else {
                 showMessage(data.error || "An error occurred", true);
             }
         } catch (error) {
-            console.error("Error:", error);
+            console.error("Detailed error:", error);
             showMessage("Network error. Please try again later.", true);
         } finally {
             loader.style.display = 'none';
-        }
-    });
-
-    // Ajout de la validation en temps réel
-    const emailInput = document.getElementById("email");
-    emailInput.addEventListener("blur", function() {
-        if (this.value && !isValidEmail(this.value)) {
-            showMessage("Please enter a valid email address", true);
-        }
-    });
-
-    // Animation des labels
-    const inputs = document.querySelectorAll('.work-request input[type="text"], .work-request input[type="email"]');
-    inputs.forEach(input => {
-        input.addEventListener('focus', function() {
-            this.parentElement.classList.add('focused');
-        });
-        input.addEventListener('blur', function() {
-            if (!this.value) {
-                this.parentElement.classList.remove('focused');
-            }
-        });
-        // Check initial state
-        if (input.value) {
-            input.parentElement.classList.add('focused');
         }
     });
 });
