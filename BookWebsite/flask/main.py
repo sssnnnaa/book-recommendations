@@ -1,23 +1,15 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import smtplib
 import os
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
-from flask import send_from_directory
 
 load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
-@app.route('/')
-def serve_index():
-    return send_from_directory('../frontend', 'index.html')
-
-@app.route('/<path:path>')
-def serve_static(path):
-    return send_from_directory('../frontend', path)
 
 EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
@@ -85,21 +77,26 @@ BOOK_RECOMMENDATIONS = {
         {"title": "The Five Dysfunctions of a Team", "author": "Patrick Lencioni"}
     ],
     "motivation": [
-        {"title": "Atomic Habits", "author": "James Clear"},
-        {"title": "The Mountain Is You", "author": "Brianna Wiest"},
-        {"title": "Think and Grow Rich", "author": "Napoleon Hill"},
-        {"title": "The Power of Now", "author": "Eckhart Tolle"},
         {"title": "Can't Hurt Me", "author": "David Goggins"},
         {"title": "The Subtle Art of Not Giving a F*ck", "author": "Mark Manson"},
         {"title": "Grit", "author": "Angela Duckworth"},
         {"title": "Mindset", "author": "Carol S. Dweck"},
+        {"title": "The Power of Now", "author": "Eckhart Tolle"},
         {"title": "You Are a Badass", "author": "Jen Sincero"},
-        {"title": "The Alchemist", "author": "Paulo Coelho"}
-        
-        
-        
+        {"title": "The Alchemist", "author": "Paulo Coelho"},
+        {"title": "Think and Grow Rich", "author": "Napoleon Hill"},
+        {"title": "The Mountain Is You", "author": "Brianna Wiest"},
+        {"title": "Atomic Habits", "author": "James Clear"}
     ]
 }
+
+@app.route('/')
+def serve_index():
+    return send_from_directory('../frontend', 'index.html')
+
+@app.route('/<path:path>')
+def serve_static(path):
+    return send_from_directory('../frontend', path)
 
 def get_html_template(name, topics):
     # Obtenir les recommandations pour chaque topic sélectionné
@@ -223,8 +220,10 @@ def get_html_template(name, topics):
 @app.route("/send-email", methods=["POST"])
 def send_email():
     try:
-        # Validation des données
+        print("Received request")
         data = request.get_json()
+        print("Request data:", data)
+        
         if not all(key in data for key in ['name', 'email', 'topics']):
             return jsonify({"error": "Missing required fields"}), 400
         
@@ -235,13 +234,13 @@ def send_email():
         if not name or not email or not topics:
             return jsonify({"error": "All fields are required"}), 400
 
-        # Création du message
+        print(f"Preparing email for {email}")
+
         msg = MIMEMultipart('alternative')
         msg['Subject'] = "Your Personalized Book Recommendations"
         msg['From'] = EMAIL_ADDRESS
         msg['To'] = email
 
-        # Ajout version texte simple
         text_content = f"""
         Hello {name},
         
@@ -255,23 +254,25 @@ def send_email():
         Discover Your Perfect Reads Team
         """
         
-        # Ajout version HTML
         html_content = get_html_template(name, topics)
 
         msg.attach(MIMEText(text_content, 'plain'))
         msg.attach(MIMEText(html_content, 'html'))
 
-        # Envoi de l'email
+        print("Connecting to SMTP server")
         with smtplib.SMTP('smtp.gmail.com', 587) as server:
             server.starttls()
+            print("Logging in to SMTP server")
             server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            print("Sending email")
             server.send_message(msg)
+            print("Email sent successfully")
 
         return jsonify({"message": "Email sent successfully!"}), 200
 
     except Exception as e:
-        print(f"Error: {str(e)}")
-        return jsonify({"error": "An error occurred while sending the email"}), 500
+        print(f"Error in send_email: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
